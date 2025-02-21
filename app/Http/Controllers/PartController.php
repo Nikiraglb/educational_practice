@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Part;
 use Illuminate\Http\Request;
 
 class PartController extends Controller
@@ -9,17 +10,26 @@ class PartController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
-    {
-        //
-    }
+ public function index()
+{
+    // Получаем данные из таблицы parts с пагинацией
+    $parts = Part::query()
+        ->when(request('search'), function ($query, $search) {
+            $query->where('name', 'like', '%' . $search . '%')
+                  ->orWhere('article', 'like', '%' . $search . '%');
+        })
+        ->paginate(10); // Пагинация по 10 записей на страницу
+
+    // Передаем переменную $parts в представление
+    return view('parts.index', compact('parts'));
+}
 
     /**
      * Show the form for creating a new resource.
      */
     public function create()
     {
-        //
+        return view('parts.create');
     }
 
     /**
@@ -27,7 +37,14 @@ class PartController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'article' => 'required|string|unique:parts,article',
+        ]);
+
+        Part::create($request->only('name', 'article'));
+
+        return redirect()->route('parts.index')->with('success', 'Запчасть успешно добавлена.');
     }
 
     /**
@@ -35,7 +52,8 @@ class PartController extends Controller
      */
     public function show(string $id)
     {
-        //
+        $part = Part::findOrFail($id);
+        return view('parts.show', compact('part'));
     }
 
     /**
@@ -43,7 +61,8 @@ class PartController extends Controller
      */
     public function edit(string $id)
     {
-        //
+        $part = Part::findOrFail($id);
+        return view('parts.edit', compact('part'));
     }
 
     /**
@@ -51,7 +70,15 @@ class PartController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'article' => 'required|string|unique:parts,article,' . $id,
+        ]);
+
+        $part = Part::findOrFail($id);
+        $part->update($request->only('name', 'article'));
+
+        return redirect()->route('parts.index')->with('success', 'Запчасть успешно обновлена.');
     }
 
     /**
@@ -59,6 +86,9 @@ class PartController extends Controller
      */
     public function destroy(string $id)
     {
-        //
+        $part = Part::findOrFail($id);
+        $part->delete();
+
+        return redirect()->route('parts.index')->with('success', 'Запчасть успешно удалена.');
     }
 }
